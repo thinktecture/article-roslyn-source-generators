@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DemoSourceGenerator
@@ -20,8 +22,14 @@ namespace DemoSourceGenerator
 
          // "attribute.Parent" is "AttributeListSyntax"
          // "attribute.Parent.Parent" is a C# fragment the attributes are applied to
-         if (attribute.Parent?.Parent is ClassDeclarationSyntax classDeclaration)
+         if (attribute.Parent?.Parent is ClassDeclarationSyntax classDeclaration &&
+             IsPartial(classDeclaration))
             Candidates.Add(classDeclaration);
+      }
+
+      public static bool IsPartial(ClassDeclarationSyntax classDeclaration)
+      {
+         return classDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
       }
 
       private static string ExtractName(TypeSyntax type)
