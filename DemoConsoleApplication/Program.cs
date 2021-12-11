@@ -1,15 +1,12 @@
-﻿using System;
+﻿namespace DemoConsoleApplication;
 
-namespace DemoConsoleApplication
+class Program
 {
-   class Program
-   {
-      static void Main(string[] args)
-      {
-         foreach (var item in ProductCategory.Items)
-         {
+    static void Main(string[] args)
+    {
+        foreach (var item in ProductCategory.Items)
+        {
             Console.WriteLine(item.Name);
-         }
-      }
-   }
+        }
+    }
 }
