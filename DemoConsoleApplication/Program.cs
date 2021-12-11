@@ -1,12 +1,6 @@
-﻿namespace DemoConsoleApplication;
+﻿using DemoConsoleApplication;
 
-class Program
+foreach (var item in ProductCategory.Items)
 {
-    static void Main(string[] args)
-    {
-        foreach (var item in ProductCategory.Items)
-        {
-            Console.WriteLine(item.Name);
-        }
-    }
+   Console.WriteLine(item.Name);
 }

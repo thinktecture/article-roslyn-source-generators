@@ -1,40 +1,86 @@
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DemoSourceGenerator;
 
 [Generator]
-public class DemoSourceGenerator : ISourceGenerator
+public class DemoSourceGenerator : IIncrementalGenerator
 {
-   public void Initialize(GeneratorInitializationContext context)
+   public void Initialize(IncrementalGeneratorInitializationContext context)
    {
-      context.RegisterForSyntaxNotifications(() => new DemoSyntaxReceiver());
+      var enumTypes = context.SyntaxProvider
+                             .CreateSyntaxProvider(CouldBeEnumerationAsync, GetEnumTypeOrNull)
+                             .Where(type => type is not null)!
+                             .Collect<ITypeSymbol>();
+
+      context.RegisterSourceOutput(enumTypes, GenerateCode);
    }
 
-   public void Execute(GeneratorExecutionContext context)
+   private static bool CouldBeEnumerationAsync(SyntaxNode syntaxNode, CancellationToken cancellationToken)
    {
-      var receiver = (DemoSyntaxReceiver?)context.SyntaxReceiver ?? throw new Exception("Syntax receiver should not be null.");
+      if (syntaxNode is not AttributeSyntax attribute)
+         return false;
 
-      foreach (var classDeclaration in receiver.Candidates)
+      var name = ExtractName(attribute.Name);
+
+      return name is "EnumGeneration" or "EnumGenerationAttribute";
+   }
+
+   private static string? ExtractName(NameSyntax? name)
+   {
+      return name switch
       {
-         var model = context.Compilation.GetSemanticModel(classDeclaration.SyntaxTree, true);
-         var type = model.GetDeclaredSymbol(classDeclaration) as ITypeSymbol;
+         SimpleNameSyntax ins => ins.Identifier.Text,
+         QualifiedNameSyntax qns => qns.Right.Identifier.Text,
+         _ => null
+      };
+   }
 
-         if (type is null || !IsEnumeration(type))
-            continue;
+   private static ITypeSymbol? GetEnumTypeOrNull(GeneratorSyntaxContext context, CancellationToken cancellationToken)
+   {
+      var attributeSyntax = (AttributeSyntax)context.Node;
+
+      // "attribute.Parent" is "AttributeListSyntax"
+      // "attribute.Parent.Parent" is a C# fragment the attributes are applied to
+      if (attributeSyntax.Parent?.Parent is not ClassDeclarationSyntax classDeclaration)
+         return null;
+
+      var type = context.SemanticModel.GetDeclaredSymbol(classDeclaration) as ITypeSymbol;
+
+      return type is null || !IsEnumeration(type) ? null : type;
+   }
+
+   private static bool IsEnumeration(ISymbol type)
+   {
+      return type.GetAttributes()
+                 .Any(a => a.AttributeClass?.Name == "EnumGenerationAttribute" &&
+                           a.AttributeClass.ContainingNamespace is
+                           {
+                              Name: "DemoLibrary",
+                              ContainingNamespace.IsGlobalNamespace: true
+                           });
+   }
+
+   private static void GenerateCode(SourceProductionContext context, ImmutableArray<ITypeSymbol> enumerations)
+   {
+      if (enumerations.IsDefaultOrEmpty)
+         return;
+
+      foreach (var type in enumerations.Distinct(SymbolEqualityComparer.Default).Cast<ITypeSymbol>())
+      {
+         context.CancellationToken.ThrowIfCancellationRequested();
 
          var code = GenerateCode(type);
-         context.AddSource($"{type.Name}_Generated.cs", code);
-      }
-   }
+         var typeNamespace = type.ContainingNamespace.IsGlobalNamespace ? null : $"{type.ContainingNamespace}.";
 
-   public static bool IsEnumeration(ISymbol type)
-   {
-      return type.GetAttributes().Any(a => a.AttributeClass?.ToString() == "DemoLibrary.EnumGenerationAttribute");
+         context.AddSource($"{typeNamespace}{type.Name}.g.cs", code);
+      }
    }
 
    private static string GenerateCode(ITypeSymbol type)
    {
-      var ns = type.ContainingNamespace.ToString();
+      var ns = type.ContainingNamespace.IsGlobalNamespace ? null : type.ContainingNamespace.ToString();
       var name = type.Name;
       var items = GetItemNames(type);
 
@@ -42,8 +88,8 @@ public class DemoSourceGenerator : ISourceGenerator
 
 using System.Collections.Generic;
 
-{(String.IsNullOrWhiteSpace(ns) ? null : $"namespace {ns}")}
-{{
+{(ns is null ? null : $@"namespace {ns}
+{{")}
    partial class {name}
    {{
       private static IReadOnlyList<{name}> _items;
@@ -54,22 +100,22 @@ using System.Collections.Generic;
          return new[] {{ {String.Join(", ", items)} }};
       }}
    }}
-}}
-";
+{(ns is null ? null : @"}
+")}";
    }
 
    private static IEnumerable<string> GetItemNames(ITypeSymbol type)
    {
       return type.GetMembers()
-         .Select(m =>
-         {
-            if (!m.IsStatic || m.DeclaredAccessibility != Accessibility.Public || m is not IFieldSymbol field)
-               return null;
+                 .Select(m =>
+                         {
+                            if (!m.IsStatic || m.DeclaredAccessibility != Accessibility.Public || m is not IFieldSymbol field)
+                               return null;
 
-            return SymbolEqualityComparer.Default.Equals(field.Type, type)
-               ? field.Name
-               : null;
-         })
-         .Where(field => field is not null)!;
+                            return SymbolEqualityComparer.Default.Equals(field.Type, type)
+                                      ? field.Name
+                                      : null;
+                         })
+                 .Where(field => field is not null)!;
    }
 }
