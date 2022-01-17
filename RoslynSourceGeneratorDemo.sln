@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoConsoleApplication", "D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoLibrary", "DemoLibrary\DemoLibrary.csproj", "{A4FD6DE2-0BF2-4F39-9C41-19DC4A0F0E30}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoTests", "DemoTests\DemoTests.csproj", "{A79D2DEA-1A68-4B98-A0D2-9FAF3B6C0943}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{A4FD6DE2-0BF2-4F39-9C41-19DC4A0F0E30}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A4FD6DE2-0BF2-4F39-9C41-19DC4A0F0E30}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A4FD6DE2-0BF2-4F39-9C41-19DC4A0F0E30}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A79D2DEA-1A68-4B98-A0D2-9FAF3B6C0943}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A79D2DEA-1A68-4B98-A0D2-9FAF3B6C0943}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A79D2DEA-1A68-4B98-A0D2-9FAF3B6C0943}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A79D2DEA-1A68-4B98-A0D2-9FAF3B6C0943}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
