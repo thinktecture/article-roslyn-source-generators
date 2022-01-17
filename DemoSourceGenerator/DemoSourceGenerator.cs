@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DemoSourceGenerator;
@@ -24,7 +25,13 @@ public class DemoSourceGenerator : IIncrementalGenerator
 
       var name = ExtractName(attribute.Name);
 
-      return name is "EnumGeneration" or "EnumGenerationAttribute";
+      if (name is not ("EnumGeneration" or "EnumGenerationAttribute"))
+         return false;
+
+      // "attribute.Parent" is "AttributeListSyntax"
+      // "attribute.Parent.Parent" is a C# fragment the attributes are applied to
+      return attribute.Parent?.Parent is ClassDeclarationSyntax classDeclaration &&
+             IsPartial(classDeclaration);
    }
 
    private static string? ExtractName(NameSyntax? name)
@@ -39,19 +46,19 @@ public class DemoSourceGenerator : IIncrementalGenerator
 
    private static ITypeSymbol? GetEnumTypeOrNull(GeneratorSyntaxContext context, CancellationToken cancellationToken)
    {
-      var attributeSyntax = (AttributeSyntax)context.Node;
+      var classDeclaration = (ClassDeclarationSyntax)context.Node.Parent!.Parent!;
 
-      // "attribute.Parent" is "AttributeListSyntax"
-      // "attribute.Parent.Parent" is a C# fragment the attributes are applied to
-      if (attributeSyntax.Parent?.Parent is not ClassDeclarationSyntax classDeclaration)
-         return null;
-
-      var type = context.SemanticModel.GetDeclaredSymbol(classDeclaration) as ITypeSymbol;
+      var type = ModelExtensions.GetDeclaredSymbol(context.SemanticModel, classDeclaration) as ITypeSymbol;
 
       return type is null || !IsEnumeration(type) ? null : type;
    }
 
-   private static bool IsEnumeration(ISymbol type)
+   public static bool IsPartial(ClassDeclarationSyntax classDeclaration)
+   {
+      return classDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
+   }
+
+   public static bool IsEnumeration(ISymbol type)
    {
       return type.GetAttributes()
                  .Any(a => a.AttributeClass?.Name == "EnumGenerationAttribute" &&
