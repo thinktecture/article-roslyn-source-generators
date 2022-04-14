@@ -17,11 +17,17 @@ public class PerfTestSourceGenerator : IIncrementalGenerator
                                                        },
                                                        (ctx, _) =>
                                                        {
-                                                          return (ITypeSymbol)ctx.SemanticModel
-                                                                                 .GetDeclaredSymbol(ctx.Node)!;
+                                                          var cds = (ClassDeclarationSyntax)ctx.Node;
+
+                                                          return new MyCustomObject(cds.Identifier.Text);
                                                        });
 
       context.RegisterSourceOutput(classProvider, Generate);
+   }
+
+   private static void Generate(SourceProductionContext ctx, MyCustomObject myCustomObject)
+   {
+      Generate(ctx, myCustomObject.Name);
    }
 
    private static void Generate(SourceProductionContext ctx, ITypeSymbol symbol)
