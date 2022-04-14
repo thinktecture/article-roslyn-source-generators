@@ -18,9 +18,23 @@ public class PerfTestSourceGenerator : IIncrementalGenerator
                                                        (ctx, _) =>
                                                        {
                                                           return (ClassDeclarationSyntax)ctx.Node;
-                                                       });
+                                                       })
+                                 .Combine(context.CompilationProvider);
+
+      // alternatively
+      // context.CompilationProvider.Combine(classProvider.Collect());
 
       context.RegisterSourceOutput(classProvider, Generate);
+   }
+
+   private static void Generate(
+      SourceProductionContext ctx,
+      (ClassDeclarationSyntax, Compilation) tuple)
+   {
+      var (node, compilation) = tuple;
+      var semanticModel = compilation.GetSemanticModel(node.SyntaxTree);
+
+      Generate(ctx, node);
    }
 
    private static void Generate(SourceProductionContext ctx, ClassDeclarationSyntax cds)
