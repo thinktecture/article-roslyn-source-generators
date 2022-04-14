@@ -17,10 +17,10 @@ public class PerfTestSourceGenerator : IIncrementalGenerator
                                                        },
                                                        (ctx, _) =>
                                                        {
-                                                          var cds = (ClassDeclarationSyntax)ctx.Node;
-
-                                                          return new MyCustomObject(cds.Identifier.Text);
-                                                       });
+                                                          return (ClassDeclarationSyntax)ctx.Node;
+                                                       })
+                                 .Combine(context.CompilationProvider)
+                                 .WithComparer(new MyTupleComparer());
 
       context.RegisterSourceOutput(classProvider, Generate);
    }
