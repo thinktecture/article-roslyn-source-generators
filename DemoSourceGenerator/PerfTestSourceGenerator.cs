@@ -19,9 +19,14 @@ public class PerfTestSourceGenerator : IIncrementalGenerator
                                                        (ctx, _) =>
                                                        {
                                                           var cds = (ClassDeclarationSyntax)ctx.Node;
+
+                                                          // use the semantic model if necessary
+                                                          // var model = ctx.SemanticModel.GetDeclaredSymbol(cd);
+
                                                           return new MyCustomObject(cds.Identifier.Text);
                                                        })
-                                 .Collect();
+                                 .Collect()
+                                 .SelectMany((myObjects, _) => myObjects.Distinct());
 
       context.RegisterSourceOutput(classProvider, Generate);
    }
