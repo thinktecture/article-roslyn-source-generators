@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -17,12 +18,22 @@ public class PerfTestSourceGenerator : IIncrementalGenerator
                                                        },
                                                        (ctx, _) =>
                                                        {
-                                                          return (ClassDeclarationSyntax)ctx.Node;
+                                                          var cds = (ClassDeclarationSyntax)ctx.Node;
+                                                          return new MyCustomObject(cds.Identifier.Text);
                                                        })
-                                 .Combine(context.CompilationProvider)
-                                 .WithComparer(new MyTupleComparer());
+                                 .Collect();
 
       context.RegisterSourceOutput(classProvider, Generate);
+   }
+
+   private static void Generate(SourceProductionContext ctx, ImmutableArray<MyCustomObject> myCustomObjects)
+   {
+      foreach (var obj in myCustomObjects.Distinct())
+      {
+         ctx.CancellationToken.ThrowIfCancellationRequested();
+
+         Generate(ctx, obj.Name);
+      }
    }
 
    private static void Generate(SourceProductionContext ctx, MyCustomObject myCustomObject)
