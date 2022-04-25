@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace DemoSourceGenerator;
+namespace DemoSourceGenerator.PerfTesting;
 
 [Generator]
 public class PerfTestSourceGenerator : IIncrementalGenerator

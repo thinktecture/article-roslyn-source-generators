@@ -1,4 +1,4 @@
-namespace DemoSourceGenerator;
+namespace DemoSourceGenerator.PerfTesting;
 
 public readonly struct MyCustomObject : IEquatable<MyCustomObject>
 {

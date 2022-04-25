@@ -1,7 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace DemoSourceGenerator;
+namespace DemoSourceGenerator.PerfTesting;
 
 public class MyTupleComparer
    : IEqualityComparer<(ClassDeclarationSyntax Node, Compilation compilation)>
