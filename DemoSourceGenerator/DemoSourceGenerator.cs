@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -15,7 +17,31 @@ public class DemoSourceGenerator : IIncrementalGenerator
                              .Collect<DemoEnumInfo>()
                              .SelectMany((enumInfos, _) => enumInfos.Distinct());
 
-      context.RegisterSourceOutput(enumTypes, GenerateCode!);
+      var generators = context.MetadataReferencesProvider
+                              .SelectMany(static (reference, _) => TryGetCodeGenerator(reference, out var factory)
+                                                                      ? ImmutableArray.Create(factory)
+                                                                      : ImmutableArray<ICodeGenerator>.Empty)
+                              .Collect();
+
+      context.RegisterSourceOutput(enumTypes.Combine(generators), GenerateCode);
+   }
+
+   private static bool TryGetCodeGenerator(
+      MetadataReference reference,
+      [MaybeNullWhen(false)] out ICodeGenerator codeGenerator)
+   {
+      foreach (var module in reference.GetModules())
+      {
+         switch (module.Name)
+         {
+            case "DemoLibrary.dll":
+               codeGenerator = DemoCodeGenerator.Instance;
+               return true;
+         }
+      }
+
+      codeGenerator = null;
+      return false;
    }
 
    private static bool CouldBeEnumerationAsync(SyntaxNode syntaxNode, CancellationToken cancellationToken)
@@ -69,11 +95,22 @@ public class DemoSourceGenerator : IIncrementalGenerator
                            });
    }
 
-   private static void GenerateCode(SourceProductionContext context, DemoEnumInfo enumInfo)
+   private static void GenerateCode(
+      SourceProductionContext context,
+      (DemoEnumInfo, ImmutableArray<ICodeGenerator>) tuple)
    {
-      var code = DemoCodeGenerator.Instance.Generate(enumInfo);
-      var ns = enumInfo.Namespace is null ? null : $"{enumInfo.Namespace}.";
+      var (enumInfo, generators) = tuple;
 
-      context.AddSource($"{ns}{enumInfo.Name}.g.cs", code);
+      if (generators.IsDefaultOrEmpty)
+         return;
+
+      foreach (var generator in generators.Distinct())
+      {
+         var ns = enumInfo.Namespace is null ? null : $"{enumInfo.Namespace}.";
+         var code = generator.Generate(enumInfo);
+
+         if (!String.IsNullOrWhiteSpace(code))
+            context.AddSource($"{ns}{enumInfo.Name}{generator.FileHintSuffix}.g.cs", code);
+      }
    }
 }
