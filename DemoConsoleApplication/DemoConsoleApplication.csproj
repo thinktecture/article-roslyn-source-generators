@@ -11,4 +11,8 @@
       <ProjectReference Include="..\DemoSourceGenerator\DemoSourceGenerator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
    </ItemGroup>
 
+   <ItemGroup>
+     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+   </ItemGroup>
+
 </Project>

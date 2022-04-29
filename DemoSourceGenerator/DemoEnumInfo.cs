@@ -6,12 +6,16 @@ public sealed class DemoEnumInfo : IEquatable<DemoEnumInfo>
 {
    public string? Namespace { get; }
    public string Name { get; }
+   public bool HasNameProperty { get; }
    public IReadOnlyList<string> ItemNames { get; }
 
    public DemoEnumInfo(ITypeSymbol type)
    {
       Namespace = type.ContainingNamespace.IsGlobalNamespace ? null : type.ContainingNamespace.ToString();
       Name = type.Name;
+      HasNameProperty = type.GetMembers().Any(m => m.Name == "Name"
+                                                   && m is IPropertySymbol property
+                                                   && property.Type.SpecialType == SpecialType.System_String);
 
       ItemNames = GetItemNames(type);
    }
@@ -46,6 +50,7 @@ public sealed class DemoEnumInfo : IEquatable<DemoEnumInfo>
 
       return Namespace == other.Namespace
              && Name == other.Name
+             && HasNameProperty == other.HasNameProperty
              && ItemNames.EqualsTo(other.ItemNames);
    }
 
@@ -55,6 +60,7 @@ public sealed class DemoEnumInfo : IEquatable<DemoEnumInfo>
       {
          var hashCode = (Namespace != null ? Namespace.GetHashCode() : 0);
          hashCode = (hashCode * 397) ^ Name.GetHashCode();
+         hashCode = (hashCode * 397) ^ HasNameProperty.GetHashCode();
          hashCode = (hashCode * 397) ^ ItemNames.ComputeHashCode();
 
          return hashCode;

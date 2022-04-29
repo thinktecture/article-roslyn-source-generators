@@ -37,6 +37,10 @@ public class DemoSourceGenerator : IIncrementalGenerator
             case "DemoLibrary.dll":
                codeGenerator = DemoCodeGenerator.Instance;
                return true;
+
+            case "Newtonsoft.Json.dll" when module.Version.Major >= 11:
+               codeGenerator = NewtonsoftJsonSourceGenerator.Instance;
+               return true;
          }
       }
 
