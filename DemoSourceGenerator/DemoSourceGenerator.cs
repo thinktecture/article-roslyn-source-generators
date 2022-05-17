@@ -17,7 +17,7 @@ public class DemoSourceGenerator : IIncrementalGenerator
                              .Collect<DemoEnumInfo>()
                              .SelectMany((enumInfos, _) => enumInfos.Distinct());
 
-      var generators = context.MetadataReferencesProvider
+      var generators = context.GetMetadataReferencesProvider()
                               .SelectMany(static (reference, _) => TryGetCodeGenerator(reference, out var factory)
                                                                       ? ImmutableArray.Create(factory)
                                                                       : ImmutableArray<ICodeGenerator>.Empty)
