@@ -8,7 +8,7 @@ public sealed class NewtonsoftJsonSourceGenerator : ICodeGenerator
 
    public string FileHintSuffix => ".NewtonsoftJson";
 
-   public string Generate(DemoEnumInfo enumInfo)
+   public string Generate(DemoEnumInfo enumInfo, IReadOnlyDictionary<string, string> translations)
    {
       if (!enumInfo.HasNameProperty)
          return String.Empty;

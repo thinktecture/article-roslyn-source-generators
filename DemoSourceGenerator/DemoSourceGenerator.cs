@@ -9,6 +9,8 @@ namespace DemoSourceGenerator;
 [Generator]
 public class DemoSourceGenerator : IIncrementalGenerator
 {
+   private static readonly IReadOnlyDictionary<string, string> _noTranslations = new Dictionary<string, string>();
+
    public void Initialize(IncrementalGeneratorInitializationContext context)
    {
       var enumTypes = context.SyntaxProvider
@@ -111,7 +113,7 @@ public class DemoSourceGenerator : IIncrementalGenerator
       foreach (var generator in generators.Distinct())
       {
          var ns = enumInfo.Namespace is null ? null : $"{enumInfo.Namespace}.";
-         var code = generator.Generate(enumInfo);
+         var code = generator.Generate(enumInfo, _noTranslations);
 
          if (!String.IsNullOrWhiteSpace(code))
             context.AddSource($"{ns}{enumInfo.Name}{generator.FileHintSuffix}.g.cs", code);
