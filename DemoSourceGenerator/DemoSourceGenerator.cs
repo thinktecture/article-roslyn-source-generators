@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Newtonsoft.Json;
 
 namespace DemoSourceGenerator;
 
@@ -10,6 +11,14 @@ namespace DemoSourceGenerator;
 public class DemoSourceGenerator : IIncrementalGenerator
 {
    private static readonly IReadOnlyDictionary<string, string> _noTranslations = new Dictionary<string, string>();
+
+   private const string _TRANSLATIONS = @"
+{
+   ""ProductCategory"": {
+      ""en"":  ""Product category"",
+      ""de"": ""Produktkategorie""
+   }
+}";
 
    public void Initialize(IncrementalGeneratorInitializationContext context)
    {
@@ -110,10 +119,15 @@ public class DemoSourceGenerator : IIncrementalGenerator
       if (generators.IsDefaultOrEmpty)
          return;
 
+      var translationsByClassName = JsonConvert.DeserializeObject<Dictionary<string, IReadOnlyDictionary<string, string>>>(_TRANSLATIONS);
+
       foreach (var generator in generators.Distinct())
       {
+         if (translationsByClassName is null || !translationsByClassName.TryGetValue(enumInfo.Name, out var translations))
+            translations = _noTranslations;
+
          var ns = enumInfo.Namespace is null ? null : $"{enumInfo.Namespace}.";
-         var code = generator.Generate(enumInfo, _noTranslations);
+         var code = generator.Generate(enumInfo, translations);
 
          if (!String.IsNullOrWhiteSpace(code))
             context.AddSource($"{ns}{enumInfo.Name}{generator.FileHintSuffix}.g.cs", code);

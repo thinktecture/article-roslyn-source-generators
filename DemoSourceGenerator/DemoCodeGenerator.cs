@@ -26,6 +26,8 @@ using DemoLibrary;
 {(ns is null ? null : $@"namespace {ns}
 {{")}");
 
+      GenerateTranslationAttributes(sb, translations);
+
       sb.Append(@$"
    partial class {name}
    {{
@@ -41,6 +43,17 @@ using DemoLibrary;
 ")}");
 
       return sb.ToString();
+   }
+
+   private static void GenerateTranslationAttributes(
+      StringBuilder sb,
+      IReadOnlyDictionary<string, string> translations)
+   {
+      foreach (var kvp in translations)
+      {
+         sb.Append(@"
+   [Translation(""").Append(kvp.Key).Append("\", \"").Append(kvp.Value).Append("\")]");
+      }
    }
 
    public override bool Equals(object? obj)
