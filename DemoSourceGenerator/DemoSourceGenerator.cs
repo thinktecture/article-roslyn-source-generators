@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 using Newtonsoft.Json;
 
 namespace DemoSourceGenerator;
@@ -12,14 +13,6 @@ public class DemoSourceGenerator : IIncrementalGenerator
 {
    private static readonly IReadOnlyDictionary<string, string> _noTranslations = new Dictionary<string, string>();
 
-   private const string _TRANSLATIONS = @"
-{
-   ""ProductCategory"": {
-      ""en"":  ""Product category"",
-      ""de"": ""Produktkategorie""
-   }
-}";
-
    public void Initialize(IncrementalGeneratorInitializationContext context)
    {
       var enumTypes = context.SyntaxProvider
@@ -28,13 +21,19 @@ public class DemoSourceGenerator : IIncrementalGenerator
                              .Collect<DemoEnumInfo>()
                              .SelectMany((enumInfos, _) => enumInfos.Distinct());
 
+      var translations = context.AdditionalTextsProvider
+                                .Where(text => text.Path.EndsWith("translations.json", StringComparison.OrdinalIgnoreCase))
+                                .Select((text, token) => text.GetText(token)?.ToString())
+                                .Where(text => text is not null)!
+                                .Collect<string>();
+
       var generators = context.GetMetadataReferencesProvider()
                               .SelectMany(static (reference, _) => TryGetCodeGenerator(reference, out var factory)
                                                                       ? ImmutableArray.Create(factory)
                                                                       : ImmutableArray<ICodeGenerator>.Empty)
                               .Collect();
 
-      context.RegisterSourceOutput(enumTypes.Combine(generators), GenerateCode);
+      context.RegisterSourceOutput(enumTypes.Combine(translations).Combine(generators), GenerateCode);
    }
 
    private static bool TryGetCodeGenerator(
@@ -112,14 +111,14 @@ public class DemoSourceGenerator : IIncrementalGenerator
 
    private static void GenerateCode(
       SourceProductionContext context,
-      (DemoEnumInfo, ImmutableArray<ICodeGenerator>) tuple)
+      ((DemoEnumInfo, ImmutableArray<string>), ImmutableArray<ICodeGenerator>) args)
    {
-      var (enumInfo, generators) = tuple;
+      var ((enumInfo, translationsAsJson), generators) = args;
 
       if (generators.IsDefaultOrEmpty)
          return;
 
-      var translationsByClassName = JsonConvert.DeserializeObject<Dictionary<string, IReadOnlyDictionary<string, string>>>(_TRANSLATIONS);
+      var translationsByClassName = GetTranslationsByClassName(context, translationsAsJson);
 
       foreach (var generator in generators.Distinct())
       {
@@ -131,6 +130,32 @@ public class DemoSourceGenerator : IIncrementalGenerator
 
          if (!String.IsNullOrWhiteSpace(code))
             context.AddSource($"{ns}{enumInfo.Name}{generator.FileHintSuffix}.g.cs", code);
+      }
+   }
+
+   private static Dictionary<string, IReadOnlyDictionary<string, string>>? GetTranslationsByClassName(SourceProductionContext context, ImmutableArray<string> translationsAsJson)
+   {
+      if (translationsAsJson.Length <= 0)
+         return null;
+
+      if (translationsAsJson.Length > 1)
+      {
+         var error = Diagnostic.Create(DemoDiagnosticsDescriptors.MultipleTranslationsFound, null);
+         context.ReportDiagnostic(error);
+      }
+
+      try
+      {
+         return JsonConvert.DeserializeObject<Dictionary<string, IReadOnlyDictionary<string, string>>>(translationsAsJson[0]);
+      }
+      catch (Exception ex)
+      {
+         var error = Diagnostic.Create(DemoDiagnosticsDescriptors.TranslationDeserializationError,
+                                       null,
+                                       ex.ToString());
+         context.ReportDiagnostic(error);
+
+         return null;
       }
    }
 }
