@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using FluentAssertions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -31,7 +32,16 @@ namespace DemoTests
 }
 ";
 
-      var generatedCode = GetGeneratedOutput(input);
+      var additionalFile = new TestAdditionalFile("Translations.json", @"
+{
+  ""ProductCategory"": {
+    ""en"": ""Product category"",
+    ""de"": ""Produktkategorie""
+  }
+}
+");
+
+      var generatedCode = GetGeneratedOutput(input, additionalFile);
 
       generatedCode.Should().NotBeNull();
 
@@ -102,7 +112,9 @@ namespace DemoTests
 ");
    }
 
-   private static GeneratedCode? GetGeneratedOutput(string sourceCode)
+   private static GeneratedCode? GetGeneratedOutput(
+      string sourceCode,
+      params AdditionalText[] additionalFiles)
    {
       var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
       var references = AppDomain.CurrentDomain.GetAssemblies()
@@ -114,9 +126,9 @@ namespace DemoTests
                                                  new[] { syntaxTree },
                                                  references,
                                                  new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-
       var generator = new DemoSourceGenerator.DemoSourceGenerator();
       CSharpGeneratorDriver.Create(generator)
+                           .AddAdditionalTexts(additionalFiles.ToImmutableArray())
                            .RunGeneratorsAndUpdateCompilation(compilation,
                                                               out var outputCompilation,
                                                               out var diagnostics);
