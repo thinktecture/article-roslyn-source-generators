@@ -8,7 +8,7 @@ public sealed class DemoCodeGenerator : ICodeGenerator
 
    private static int _counter;
 
-   public string? FileHintSuffix => null;
+   public string? FileHintSuffix => ".Main";
 
    public string Generate(DemoEnumInfo enumInfo, IReadOnlyDictionary<string, string> translations)
    {
