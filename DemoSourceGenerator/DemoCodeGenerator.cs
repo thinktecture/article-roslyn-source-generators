@@ -10,7 +10,7 @@ public sealed class DemoCodeGenerator : ICodeGenerator
 
    public string? FileHintSuffix => ".Main";
 
-   public string Generate(DemoEnumInfo enumInfo, IReadOnlyDictionary<string, string> translations)
+   public string Generate(DemoEnumInfo enumInfo)
    {
       var ns = enumInfo.Namespace;
       var name = enumInfo.Name;
@@ -24,11 +24,7 @@ using System.Collections.Generic;
 using DemoLibrary;
 
 {(ns is null ? null : $@"namespace {ns}
-{{")}");
-
-      GenerateTranslationAttributes(sb, translations);
-
-      sb.Append(@$"
+{{")}
    partial class {name}
    {{
       private static IReadOnlyList<{name}>? _items;
@@ -43,17 +39,6 @@ using DemoLibrary;
 ")}");
 
       return sb.ToString();
-   }
-
-   private static void GenerateTranslationAttributes(
-      StringBuilder sb,
-      IReadOnlyDictionary<string, string> translations)
-   {
-      foreach (var kvp in translations)
-      {
-         sb.Append(@"
-   [Translation(""").Append(kvp.Key).Append("\", \"").Append(kvp.Value).Append("\")]");
-      }
    }
 
    public override bool Equals(object? obj)
