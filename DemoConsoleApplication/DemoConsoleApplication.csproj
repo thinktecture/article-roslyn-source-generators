@@ -5,10 +5,14 @@
       <TargetFramework>net7.0</TargetFramework>
       <IsPackable>false</IsPackable>
       <DemoSourceGenerator_Counter>enable</DemoSourceGenerator_Counter>
+      <DemoSourceGenerator_LogFilePath>c:/temp/DemoSourceGenerator_logs.txt</DemoSourceGenerator_LogFilePath>
+      <DemoSourceGenerator_LogLevel>debug</DemoSourceGenerator_LogLevel>
    </PropertyGroup>
 
    <ItemGroup>
       <CompilerVisibleProperty Include="DemoSourceGenerator_Counter" />
+      <CompilerVisibleProperty Include="DemoSourceGenerator_LogFilePath" />
+      <CompilerVisibleProperty Include="DemoSourceGenerator_LogLevel" />
    </ItemGroup>
 
    <ItemGroup>

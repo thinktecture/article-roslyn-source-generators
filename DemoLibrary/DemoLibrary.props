@@ -2,6 +2,8 @@
 
    <ItemGroup>
       <CompilerVisibleProperty Include="DemoSourceGenerator_Counter" />
+      <CompilerVisibleProperty Include="DemoSourceGenerator_LogFilePath" />
+      <CompilerVisibleProperty Include="DemoSourceGenerator_LogLevel" />
    </ItemGroup>
 
 </Project> 

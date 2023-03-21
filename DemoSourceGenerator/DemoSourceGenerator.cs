@@ -1,8 +1,10 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using DemoSourceGenerator.Logging;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Newtonsoft.Json;
 
 namespace DemoSourceGenerator;
@@ -10,8 +12,14 @@ namespace DemoSourceGenerator;
 [Generator]
 public class DemoSourceGenerator : IIncrementalGenerator
 {
+   private ILogger _logger = NullLogger.Instance;
+
    public void Initialize(IncrementalGeneratorInitializationContext context)
    {
+      var options = GetGeneratorOptions(context);
+
+      SetupLogger(context, options);
+
       var enumTypes = context.SyntaxProvider
                              .ForAttributeWithMetadataName("DemoLibrary.EnumGenerationAttribute",
                                                            CouldBeEnumerationAsync,
@@ -24,8 +32,6 @@ public class DemoSourceGenerator : IIncrementalGenerator
                                                                       ? ImmutableArray.Create(factory)
                                                                       : ImmutableArray<ICodeGenerator>.Empty)
                               .Collect();
-
-      var options = GetGeneratorOptions(context);
 
       context.RegisterSourceOutput(enumTypes.Combine(generators).Combine(options), GenerateCode);
 
@@ -40,8 +46,29 @@ public class DemoSourceGenerator : IIncrementalGenerator
                                                                                          .TryGetValue("build_property.DemoSourceGenerator_Counter", out var counterEnabledValue)
                                                                                   && IsFeatureEnabled(counterEnabledValue);
 
-                                                             return new GeneratorOptions(counterEnabled);
+                                                             var loggingOptions = GetLoggingOptions(options);
+
+                                                             return new GeneratorOptions(counterEnabled, loggingOptions);
                                                           });
+   }
+
+   private static LoggingOptions? GetLoggingOptions(AnalyzerConfigOptionsProvider options)
+   {
+      if (!options.GlobalOptions.TryGetValue("build_property.DemoSourceGenerator_LogFilePath", out var logFilePath))
+         return null;
+
+      if (String.IsNullOrWhiteSpace(logFilePath))
+         return null;
+
+      logFilePath = logFilePath.Trim();
+
+      if (!options.GlobalOptions.TryGetValue("build_property.DemoSourceGenerator_LogLevel", out var logLevelValue)
+          || !Enum.TryParse(logLevelValue, true, out LogLevel logLevel))
+      {
+         logLevel = LogLevel.Information;
+      }
+
+      return new LoggingOptions(logFilePath, logLevel);
    }
 
    private static bool IsFeatureEnabled(string counterEnabledValue)
@@ -49,6 +76,28 @@ public class DemoSourceGenerator : IIncrementalGenerator
       return StringComparer.OrdinalIgnoreCase.Equals("enable", counterEnabledValue)
              || StringComparer.OrdinalIgnoreCase.Equals("enabled", counterEnabledValue)
              || StringComparer.OrdinalIgnoreCase.Equals("true", counterEnabledValue);
+   }
+
+   private void SetupLogger(
+      IncrementalGeneratorInitializationContext context,
+      IncrementalValueProvider<GeneratorOptions> optionsProvider)
+   {
+      var logging = optionsProvider
+                    .Select((options, _) => options.Logging)
+                    .Select((options, _) =>
+                            {
+                               _logger = options is null
+                                            ? NullLogger.Instance
+                                            : new Logger(options.Value.Level, options.Value.FilePath);
+
+                               return 0;
+                            })
+                    .SelectMany((_, _) => ImmutableArray<int>.Empty); // don't emit anything
+
+      context.RegisterSourceOutput(logging, static (_, _) =>
+                                            {
+                                               // This delegate will never be called
+                                            });
    }
 
    private static void InitializeTranslationsGenerator(
@@ -147,10 +196,13 @@ public class DemoSourceGenerator : IIncrementalGenerator
              IsPartial(classDeclaration);
    }
 
-   private static DemoEnumInfo GetEnumInfo(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken)
+   private DemoEnumInfo GetEnumInfo(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken)
    {
       var type = (INamedTypeSymbol)context.TargetSymbol;
       var enumInfo = new DemoEnumInfo(type);
+
+      if (_logger.IsEnabled(LogLevel.Debug))
+         _logger.Log(LogLevel.Debug, $"Smart Enum found: {enumInfo.Namespace}.{enumInfo.Name}");
 
       return enumInfo;
    }
@@ -173,7 +225,7 @@ public class DemoSourceGenerator : IIncrementalGenerator
 
    private static void GenerateCode(
       SourceProductionContext context,
-      ((DemoEnumInfo, ImmutableArray<ICodeGenerator>), GeneratorOptions)  args)
+      ((DemoEnumInfo, ImmutableArray<ICodeGenerator>), GeneratorOptions) args)
    {
       var ((enumInfo, generators), options) = args;
 
