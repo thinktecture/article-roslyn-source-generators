@@ -3,7 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
 using Newtonsoft.Json;
 
 namespace DemoSourceGenerator;
@@ -16,9 +15,10 @@ public class DemoSourceGenerator : IIncrementalGenerator
    public void Initialize(IncrementalGeneratorInitializationContext context)
    {
       var enumTypes = context.SyntaxProvider
-                             .CreateSyntaxProvider(CouldBeEnumerationAsync, GetEnumInfoOrNull)
-                             .Where(type => type is not null)!
-                             .Collect<DemoEnumInfo>()
+                             .ForAttributeWithMetadataName("DemoLibrary.EnumGenerationAttribute",
+                                                           CouldBeEnumerationAsync,
+                                                           GetEnumInfo)
+                             .Collect()
                              .SelectMany((enumInfos, _) => enumInfos.Distinct());
 
       var translations = context.AdditionalTextsProvider
@@ -60,37 +60,16 @@ public class DemoSourceGenerator : IIncrementalGenerator
 
    private static bool CouldBeEnumerationAsync(SyntaxNode syntaxNode, CancellationToken cancellationToken)
    {
-      if (syntaxNode is not AttributeSyntax attribute)
-         return false;
-
-      var name = ExtractName(attribute.Name);
-
-      if (name is not ("EnumGeneration" or "EnumGenerationAttribute"))
-         return false;
-
-      // "attribute.Parent" is "AttributeListSyntax"
-      // "attribute.Parent.Parent" is a C# fragment the attributes are applied to
-      return attribute.Parent?.Parent is ClassDeclarationSyntax classDeclaration &&
+      return syntaxNode is ClassDeclarationSyntax classDeclaration &&
              IsPartial(classDeclaration);
    }
 
-   private static string? ExtractName(NameSyntax? name)
+   private static DemoEnumInfo GetEnumInfo(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken)
    {
-      return name switch
-      {
-         SimpleNameSyntax ins => ins.Identifier.Text,
-         QualifiedNameSyntax qns => qns.Right.Identifier.Text,
-         _ => null
-      };
-   }
+      var type = (INamedTypeSymbol)context.TargetSymbol;
+      var enumInfo = new DemoEnumInfo(type);
 
-   private static DemoEnumInfo? GetEnumInfoOrNull(GeneratorSyntaxContext context, CancellationToken cancellationToken)
-   {
-      var classDeclaration = (ClassDeclarationSyntax)context.Node.Parent!.Parent!;
-
-      var type = ModelExtensions.GetDeclaredSymbol(context.SemanticModel, classDeclaration) as ITypeSymbol;
-
-      return type is null || !IsEnumeration(type) ? null : new DemoEnumInfo(type);
+      return enumInfo;
    }
 
    public static bool IsPartial(ClassDeclarationSyntax classDeclaration)
