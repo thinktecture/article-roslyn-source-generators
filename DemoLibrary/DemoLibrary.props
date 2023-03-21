@@ -1,0 +1,7 @@
+<Project>
+
+   <ItemGroup>
+      <CompilerVisibleProperty Include="DemoSourceGenerator_Counter" />
+   </ItemGroup>
+
+</Project> 

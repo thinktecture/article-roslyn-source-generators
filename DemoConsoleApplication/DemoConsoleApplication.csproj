@@ -4,7 +4,12 @@
       <OutputType>Exe</OutputType>
       <TargetFramework>net7.0</TargetFramework>
       <IsPackable>false</IsPackable>
+      <DemoSourceGenerator_Counter>enable</DemoSourceGenerator_Counter>
    </PropertyGroup>
+
+   <ItemGroup>
+      <CompilerVisibleProperty Include="DemoSourceGenerator_Counter" />
+   </ItemGroup>
 
    <ItemGroup>
       <ProjectReference Include="..\DemoLibrary\DemoLibrary.csproj" />

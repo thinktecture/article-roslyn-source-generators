@@ -8,6 +8,7 @@
       <ProjectReference Include="..\DemoSourceGenerator\DemoSourceGenerator.csproj"
                         PrivateAssets="contentfiles;build"
                         SetTargetFramework="TargetFramework=netstandard2.0" />
+      <None Update="DemoLibrary.props" Pack="true" PackagePath="build" />
    </ItemGroup>
 
 </Project>

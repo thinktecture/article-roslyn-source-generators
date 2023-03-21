@@ -4,5 +4,5 @@ public interface ICodeGenerator : IEquatable<ICodeGenerator>
 {
    string? FileHintSuffix { get; }
 
-   string Generate(DemoEnumInfo enumInfo);
+   string Generate(DemoEnumInfo enumInfo, GeneratorOptions options);
 }

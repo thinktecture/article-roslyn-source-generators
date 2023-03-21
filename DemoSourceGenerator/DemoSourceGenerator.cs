@@ -25,9 +25,30 @@ public class DemoSourceGenerator : IIncrementalGenerator
                                                                       : ImmutableArray<ICodeGenerator>.Empty)
                               .Collect();
 
-      context.RegisterSourceOutput(enumTypes.Combine(generators), GenerateCode);
+      var options = GetGeneratorOptions(context);
+
+      context.RegisterSourceOutput(enumTypes.Combine(generators).Combine(options), GenerateCode);
 
       InitializeTranslationsGenerator(context, enumTypes);
+   }
+
+   private static IncrementalValueProvider<GeneratorOptions> GetGeneratorOptions(IncrementalGeneratorInitializationContext context)
+   {
+      return context.AnalyzerConfigOptionsProvider.Select((options, _) =>
+                                                          {
+                                                             var counterEnabled = options.GlobalOptions
+                                                                                         .TryGetValue("build_property.DemoSourceGenerator_Counter", out var counterEnabledValue)
+                                                                                  && IsFeatureEnabled(counterEnabledValue);
+
+                                                             return new GeneratorOptions(counterEnabled);
+                                                          });
+   }
+
+   private static bool IsFeatureEnabled(string counterEnabledValue)
+   {
+      return StringComparer.OrdinalIgnoreCase.Equals("enable", counterEnabledValue)
+             || StringComparer.OrdinalIgnoreCase.Equals("enabled", counterEnabledValue)
+             || StringComparer.OrdinalIgnoreCase.Equals("true", counterEnabledValue);
    }
 
    private static void InitializeTranslationsGenerator(
@@ -152,9 +173,9 @@ public class DemoSourceGenerator : IIncrementalGenerator
 
    private static void GenerateCode(
       SourceProductionContext context,
-      (DemoEnumInfo, ImmutableArray<ICodeGenerator>) args)
+      ((DemoEnumInfo, ImmutableArray<ICodeGenerator>), GeneratorOptions)  args)
    {
-      var (enumInfo, generators) = args;
+      var ((enumInfo, generators), options) = args;
 
       if (generators.IsDefaultOrEmpty)
          return;
@@ -162,7 +183,7 @@ public class DemoSourceGenerator : IIncrementalGenerator
       foreach (var generator in generators.Distinct())
       {
          var ns = enumInfo.Namespace is null ? null : $"{enumInfo.Namespace}.";
-         var code = generator.Generate(enumInfo);
+         var code = generator.Generate(enumInfo, options);
 
          if (!String.IsNullOrWhiteSpace(code))
             context.AddSource($"{ns}{enumInfo.Name}{generator.FileHintSuffix}.g.cs", code);
